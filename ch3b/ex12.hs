@@ -5,7 +5,7 @@ type Vector       = (Integer, Integer)
 data Direction    = GoesStraight | GoesLeft | GoesRight deriving (Show, Eq)
 
 testData :: [Point]
-testData  = [(1,4), (1,1), (3,5), (3,4), (3,2), (2,3), (3,1), (5,4), (5,5)]
+testData  = [(1,4), (1,1), (3,5), (3,4), (3,2), (2,3), (3,1), (5,4), (8,5)]
 
 toVector :: Point -> Point -> Vector
 toVector (ax, ay) (bx, by) = (bx - ax, by - ay)
@@ -19,10 +19,6 @@ getDirFromV (vx, vy) (wx, wy)
 
 getDirFromP :: Point -> Point -> Point -> Direction
 getDirFromP a b c = getDirFromV (toVector a b) (toVector b c)
-
-getVDirs :: [Point] -> [Direction]
-getVDirs (a:b:c:s) = (getDirFromP a b c):(getVDirs (b:c:s))
-getVDirs _         = []
 
 findStartPoint :: [Point] -> Point
 findStartPoint ps = foldr betterStartPoint (last ps) ps
@@ -50,20 +46,12 @@ getGrahamPath :: [Point] -> [Point]
 getGrahamPath ps = [p] ++ (filter (/= p) (sortPoints ps)) ++ [p]
     where p = findStartPoint ps
 
-isLeftTurning :: (Direction, Point) -> Bool
-isLeftTurning (d, _) = d == GoesLeft
-
-getAnnotatedPath :: [Point] -> [(Direction, Point)]
-getAnnotatedPath ps = zip (getVDirs (gpath)) (tail gpath)
-    where gpath = getGrahamPath ps
-
-getConvexHullWithDir :: [Point] -> [(Direction, Point)]
-getConvexHullWithDir ps = first:(filter isLeftTurning (getAnnotatedPath ps))
-    where first = (GoesLeft, findStartPoint ps)
-
-removeDirection :: [(Direction, Point)] -> [Point]
-removeDirection ((_, p):ps) = p:(removeDirection ps)
-removeDirection []          = []
+reduceGrahamPath :: [Point] -> [Point]
+reduceGrahamPath (a:b:c:s)
+    | getDirFromP a b c == GoesLeft     = a:reduceGrahamPath (b:c:s)
+    | getDirFromP a b c == GoesRight    = reduceGrahamPath (a:c:s)
+    | getDirFromP a b c == GoesStraight = reduceGrahamPath (a:c:s)
+reduceGrahamPath (a:b:s)                = a:[]
 
 getConvexHull :: [Point] -> [Point]
-getConvexHull = removeDirection . getConvexHullWithDir
+getConvexHull = reduceGrahamPath . getGrahamPath
